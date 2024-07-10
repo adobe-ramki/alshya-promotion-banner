@@ -4,7 +4,6 @@ application:
       starter-kit:
         license: Apache-2.0
         actions:
-          # Please DO NOT DELETE this action; future functionalities planned for upcoming starter kit releases may stop working.
           info:
             function: actions/starter-kit-info/index.js
             web: 'yes'
@@ -18,10 +17,18 @@ application:
         license: Apache-2.0
         actions:
           $include: ./actions/product/commerce/actions.config.yaml
-      #product-backoffice:
-      #  license: Apache-2.0
-      #  actions:
-      #    $include: ./actions/product/external/actions.config.yaml
-productDependencies:
-  - code: COMMC
-    minVersion: 2.4.4
+      sale-rule-content:
+        license: Apache-2.0
+        actions:
+          $include: ./actions/sale-rule-content/commerce/actions.config.yaml
+  events:
+    registrations:
+      sale-rule-content:
+        description: sale-rule-content
+        events_of_interest:
+          - provider_metadata: dx_commerce_events
+            event_codes:
+              - com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.schedule
+              - com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.unschedule
+        runtime_action: sale-rule-content
+        
