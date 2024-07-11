@@ -16,9 +16,6 @@ const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
 const { getEntraAccessToken, setUtilityLogger, getFileNameToRead, getDirectoryPath, removeFromExcel } = require('../../../../utils/spo-file-update')
 
-main({}).then(r => {
-
-})
 /**
  * This action is on charge of deleting staging content of sales rule information in Adobe commerce to external one drive excel sheet
  *
