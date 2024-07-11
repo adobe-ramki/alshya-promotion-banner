@@ -16,9 +16,6 @@ const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
 const { getEntraAccessToken, setUtilityLogger, getFileNameToRead, getDirectoryPath, removeFromExcel } = require('../../../../utils/spo-file-update')
 
-main({}).then(r => {
-
-})
 /**
  * This action is on charge of deleting staging content of sales rule information in Adobe commerce to external one drive excel sheet
  *
@@ -37,18 +34,16 @@ async function main (params) {
         if (validationResult.success === false) {
             return actionErrorResponse(HTTP_BAD_REQUEST, validationResult.message)
         }
-        const oldWebsiteCodes = dataObject.pre_website.split(',');
-        const newWebsiteCodes = dataObject.post_website.split(',');
+        const websiteCodes = dataObject.website.split(',');
         const brandCode = dataObject.brand;
-        let removeFromWebsites = oldWebsiteCodes.filter(x => !newWebsiteCodes.includes(x));
-        if (removeFromWebsites.length === 0 && newWebsiteCodes.length === 0) {
+        if (websiteCodes.length === 0 && websiteCodes.length === 0) {
             return actionSuccessResponse("No changes to update")
         }
         const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`;
         const accessToken = getEntraAccessToken();
         const rowsData = [dataObject];
         //remove from sheet
-        for(let siteCode of removeFromWebsites) {
+        for(let siteCode of websiteCodes) {
             let filePathToRead = filePathPrefix + getFileNameToRead(siteCode);
             await removeFromExcel(accessToken, rowsData, filePathToRead);
         }
