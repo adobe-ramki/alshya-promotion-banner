@@ -61,11 +61,33 @@ function findRowByID(worksheet, candidateID) {
  * 
  * @param {object} row 
  * @param {string} cellNumber 
- * @param {any} value 
+ * @param {any} value
  */
 function setCellValue(row, cellNumber, value) {
     const cell = row.getCell(cellNumber)
     cell.value = value
+}
+
+/**
+ * Parse boolean value to integer
+ * @param {string | boolean} value 
+ * @returns {number}
+ */
+function parseBoolToInt(value) {
+    if (typeof(value) === 'string'){
+        value = value.trim().toLowerCase();
+    }
+    switch(value){
+        case true:
+        case "true":
+        case 1:
+        case "1":
+        case "on":
+        case "yes":
+            return 1;
+        default:
+            return 0;
+    }
 }
 
 /**
@@ -236,7 +258,7 @@ async function updateExcel(accessToken, items, filePathToRead) {
             untilityLogger.info("..adding row")
             let data = []
             keysToUpdate.forEach((key, index) => {
-                data.push(elem[key])
+                data.push((key === 'status'? parseBoolToInt(elem[key]): elem[key]))
             })
             const newRow = worksheet.addRow(data)
         }
@@ -266,14 +288,13 @@ async function removeFromExcel(accessToken, items, filePathToRead) {
     for (let elem of items) {
         const row = findRowByID(worksheet, elem.schedule_id)
         if (row) {
-            untilityLogger.info("..updating row")
-            setCellValue(row, 'status', '0')
+            worksheet.spliceRows(row._number, 1)
         } else {
             untilityLogger.info("Can not find row to deactivate")
         }
     }
     try {
-        await uploadExcelWorkSheet(worksheet, filePathToRead, accessToken)
+        await uploadExcelWorkSheet(worksheet.getWorksheet(), filePathToRead, accessToken)
     } catch (error) {
         untilityLogger.debug(`Error writing to file:${stringParameters(error)}`)
     }
