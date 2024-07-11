@@ -1,5 +1,3 @@
-const { Core } = require('@adobe/aio-sdk')
-
 class Logger {
     constructor() {
         this.loggerObject = null;
@@ -22,4 +20,6 @@ class Logger {
     }
 }
 
-module.exports = Logger;
+module.exports = {
+    Logger
+};

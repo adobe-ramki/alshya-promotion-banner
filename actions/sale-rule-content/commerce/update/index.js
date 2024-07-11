@@ -53,7 +53,6 @@ async function main (params) {
         let filePathToRead = filePathPrefix + getFileNameToRead(siteCode);
         await removeFromExcel(accessToken, rowsData, filePathToRead);
     }
-  
     logger.debug('Process finished successfully')
     return actionSuccessResponse('Data synced successfully')
   } catch (error) {

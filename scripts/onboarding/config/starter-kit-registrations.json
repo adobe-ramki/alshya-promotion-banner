@@ -1,6 +1,3 @@
 {
-  "product": ["commerce", "backoffice"],
-  "customer": ["commerce", "backoffice"],
-  "order": ["commerce", "backoffice"],
-  "stock": ["commerce", "backoffice"]
+  "sale-rule-content": ["commerce"]
 }
