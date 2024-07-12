@@ -168,19 +168,45 @@ async function uploadFileToOneDrive(accessToken, fileData, filePathToRead) {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Prefer': 'bypass-shared-lock'
     }
-
     const originalEndpoint = filePathToRead+`:/content`
-    try {
-        await axios.put(originalEndpoint, fileData, { headers: headers })
-    } catch (error) {
-        if (error.response && error.response.data && error.response.data.error && error.response.data.error.message.includes("locked")) {
-            utilityLogger.info("Current file is locked. Deleting and creating a new one.")
-            const hasRemoved = deleteOnlyIfLocked(headers, filePathToRead)
-            if (hasRemoved) {
-                await putFileToOneDrive(fileData, headers, originalEndpoint)
-            }
-        }
-    }
+    retryFileUpload(fileData, headers, originalEndpoint)
+}
+
+/**
+ * Upload file to Sharepoint and retry if file is locked until 30 seconds in the interval of 500ms
+ * 
+ * @param {any} fileData 
+ * @param {object} requestHeaders 
+ * @param {string} originalEndpoint 
+ */
+function retryFileUpload(fileData, requestHeaders, originalEndpoint) {
+    let count = 0
+    const delayInMiliSec = 500
+    const tryUptoSec = 30
+    const maxRetries = ((tryUptoSec * 1000) / delayInMiliSec)
+    const retryInterval = setInterval(
+        () => {
+            void( 
+                async() => {
+                    let shouldRetry = false
+                    try {
+                        await axios.put(originalEndpoint, fileData, { headers: requestHeaders })
+                    } catch (error) {
+                        if (error.response && error.response.data && error.response.data.error && error.response.data.error.message.includes("locked")) {
+                            utilityLogger.info("Current file is locked. Retrying...")
+                            shouldRetry = true
+                        } else {
+                            utilityLogger.debug(`Error uploading the file:${stringParameters(error?.response?.data)}`)
+                        }
+                    }
+                    count++; 
+                    if(count===maxRetries || !shouldRetry) {
+                        clearInterval(retryInterval);
+                    } 
+                })();
+            }, 
+            delayInMiliSec
+        );
 }
 
 /**

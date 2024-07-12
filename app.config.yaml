@@ -13,10 +13,6 @@ application:
             annotations:
               require-adobe-auth: true
               final: true
-      product-commerce:
-        license: Apache-2.0
-        actions:
-          $include: ./actions/product/commerce/actions.config.yaml
       sale-rule-content:
         license: Apache-2.0
         actions:
