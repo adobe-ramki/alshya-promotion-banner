@@ -40,7 +40,7 @@ async function main (params) {
             return actionSuccessResponse("No changes to update")
         }
         const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`;
-        const accessToken = getEntraAccessToken();
+        const accessToken = getEntraAccessToken(params);
         const rowsData = [dataObject];
         //remove from sheet
         for(let siteCode of websiteCodes) {
