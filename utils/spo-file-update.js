@@ -49,9 +49,12 @@ function findRowByID(worksheet, candidateID, columnIndex) {
     let targetRow = null
     candidateID = parseInt(candidateID)
     worksheet.eachRow((row, rowNumber) => {
-        if (row.getCell(columnIndex).value === candidateID) {
-            targetRow = row
-            return;
+        if (row._number > 1) {
+            let cellValue = parseInt(row.getCell(columnIndex).value);
+            if (cellValue === candidateID) {
+                targetRow = row
+                return;
+            }
         }
     })
     return targetRow
@@ -301,9 +304,6 @@ async function updateExcel(accessToken, items, filePathToRead) {
         const row = findRowByID(worksheet, elem.schedule_id, scheduleIdColumnIndex)
         if (row) {
             utilityLogger.info("..updating row")
-            keysToUpdate.forEach((key, index) => {
-                if (typeof elem[key] !== 'undefined') setCellValue(row, row._number, elem[key])
-            })
             for (const key of keysToUpdate) {
                 if (typeof elem[key] !== 'undefined') {
                     let cellNumber = await findColumnIndexByHeader(worksheet, key)
