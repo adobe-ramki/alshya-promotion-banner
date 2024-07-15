@@ -11,7 +11,7 @@ governing permissions and limitations under the License.
 */
 const { Core } = require('@adobe/aio-sdk')
 const { stringParameters } = require('../../../utils')
-const { validateData } = require('../update/validator')
+const { validateData } = require('../delete/validator')
 const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
 const { getEntraAccessToken, setUtilityLogger, getFileNameToRead, getDirectoryPath, removeFromExcel } = require('../../../../utils/spo-file-update')
@@ -51,6 +51,7 @@ async function main (params) {
         logger.debug('Process finished successfully')
         return actionSuccessResponse('Data synced successfully')
     } catch (error) {
+        console.log(error);
         logger.error(`Error processing the request: ${error.message}`)
         return actionErrorResponse(HTTP_INTERNAL_ERROR, error.message)
     }
