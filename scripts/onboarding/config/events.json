@@ -3,6 +3,7 @@
     "commerce": [
       "com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.schedule",
       "com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.unschedule"
-    ]
+    ],
+    "backoffice": []
   }
 }

@@ -5,7 +5,7 @@ const { stringParameters } = require('../actions/utils')
 const { getEntraAccessToken } = require('./azure-auth')
 const { Logger } =  require('./logger');
 const utilityLogger = new Logger();
-
+const loadedHeaderRow = null; 
 /**
  * Set the logger instance for the utility
  * 
@@ -42,11 +42,12 @@ function getFileNameToRead(siteCode = null) {
  *
  * @param {object} worksheet
  * @param {string|number} candidateID
- * @param columnIndex
+ * @param {number} columnIndex
  * @returns {object | null}
  */
 function findRowByID(worksheet, candidateID, columnIndex) {
     let targetRow = null
+    candidateID = parseInt(candidateID)
     worksheet.eachRow((row, rowNumber) => {
         if (row.getCell(columnIndex).value === candidateID) {
             targetRow = row
@@ -63,9 +64,11 @@ function findRowByID(worksheet, candidateID, columnIndex) {
  * @returns {Promise<number>}
  */
 async function findColumnIndexByHeader(worksheet, headerName) {
-    const headerRow = worksheet.getRow(1); // Assuming headers are in the first row
+    if (loadedHeaderRow === null) {
+        loadedHeaderRow = worksheet.getRow(1)
+    }
     let columnIndex = -1;
-    headerRow.eachCell((cell, colNumber) => {
+    loadedHeaderRow.eachCell((cell, colNumber) => {
         if (cell.value === headerName) {
             columnIndex = colNumber;
         }
@@ -290,13 +293,25 @@ async function updateExcel(accessToken, items, filePathToRead) {
     const workbook = await loadExcelWorkBook(fileData)
     const worksheet = workbook.getWorksheet(1)
     const keysToUpdate = getSheetColumnsToUpdate()
+    const scheduleIdColumnIndex = await findColumnIndexByHeader(worksheet, 'schedule_id');
+    if (scheduleIdColumnIndex === -1) {
+        throw new Error('Column "schedule_id" or "status" not found');
+    }
     for (const elem of items) {
-        const row = findRowByID(worksheet, elem.schedule_id)
+        const row = findRowByID(worksheet, elem.schedule_id, scheduleIdColumnIndex)
         if (row) {
             utilityLogger.info("..updating row")
             keysToUpdate.forEach((key, index) => {
-                setCellValue(row, key, elem[key])
+                if (typeof elem[key] !== 'undefined') setCellValue(row, row._number, elem[key])
             })
+            for (const key of keysToUpdate) {
+                if (typeof elem[key] !== 'undefined') {
+                    let cellNumber = await findColumnIndexByHeader(worksheet, key)
+                    if (cellNumber > 0) {
+                        setCellValue(row, cellNumber, elem[key])
+                    }
+                }
+            }
         } else {
             utilityLogger.info("..adding row")
             let data = []

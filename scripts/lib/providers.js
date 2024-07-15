@@ -92,7 +92,8 @@ async function main (clientRegistrations, environment, accessToken) {
     console.log('Start process of creating providers: ', providersEventsConfig)
 
     // Validate client registration selection
-    const requiredRegistrations = ['product', 'customer', 'order', 'stock']
+    //const requiredRegistrations = ['product', 'customer', 'order', 'stock']
+    const requiredRegistrations = ['sale-rule-content']
     const errorMessage = checkMissingRequestInputs(clientRegistrations, requiredRegistrations, [])
     if (errorMessage) {
       // return and log client errors

@@ -13,18 +13,10 @@ application:
             annotations:
               require-adobe-auth: true
               final: true
-      sale-rule-content:
+      sale-rule-content-commerce:
         license: Apache-2.0
         actions:
           $include: ./actions/sale-rule-content/commerce/actions.config.yaml
-  events:
-    registrations:
-      sale-rule-content:
-        description: sale-rule-content
-        events_of_interest:
-          - provider_metadata: dx_commerce_events
-            event_codes:
-              - com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.schedule
-              - com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.unschedule
-        runtime_action: sale-rule-content
-        
+productDependencies:
+  - code: COMMC
+    minVersion: 2.4.5

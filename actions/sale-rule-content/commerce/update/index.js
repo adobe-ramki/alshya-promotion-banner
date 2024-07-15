@@ -14,7 +14,7 @@ const { stringParameters } = require('../../../utils')
 const { validateData } = require('./validator')
 const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
-const { getEntraAccessToken, updateExcel, removeFromExcel, setUnitilityLogger } = require('../../../../utils/spo-file-update')
+const { getFileNameToRead ,getEntraAccessToken, updateExcel, removeFromExcel, setUtilityLogger } = require('../../../../utils/spo-file-update')
 /**
  * This action is on charge of sending created/updated staging content of sales rule information in Adobe commerce to external one drive excel sheet
  *
@@ -22,8 +22,8 @@ const { getEntraAccessToken, updateExcel, removeFromExcel, setUnitilityLogger } 
  * @param {object} params - includes the env params, type and the data of the event
  */
 async function main (params) {
-  const logger = Core.Logger('product-commerce-consumer', { level: logLevel || 'info' })
-  setUnitilityLogger(logger)
+  const logger = Core.Logger('product-commerce-consumer', { level: params.LOG_LEVEL || 'info' })
+  setUtilityLogger(logger)
   logger.info('Start processing request')
   logger.debug(`Received params: ${stringParameters(params)}`)
 

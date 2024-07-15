@@ -40,7 +40,3 @@ coverage
 # logs folder for aio-run-detached
 logs
 
-test/test-coverage
-
-# Onboarding workspace config - may contain secrets
-scripts/onboarding/config/workspace.json
