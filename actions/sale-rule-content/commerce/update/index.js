@@ -14,7 +14,7 @@ const { stringParameters } = require('../../../utils')
 const { validateData } = require('./validator')
 const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
-const { getFileNameToRead ,getEntraAccessToken, updateExcel, removeFromExcel, setUtilityLogger } = require('../../../../utils/spo-file-update')
+const { getDirectoryPath, getFileNameToRead ,getEntraAccessToken, updateExcel, removeFromExcel, setUtilityLogger } = require('../../../../utils/spo-file-update')
 /**
  * This action is on charge of sending created/updated staging content of sales rule information in Adobe commerce to external one drive excel sheet
  *

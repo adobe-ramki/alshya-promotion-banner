@@ -5,7 +5,7 @@ const { stringParameters } = require('../actions/utils')
 const { getEntraAccessToken } = require('./azure-auth')
 const { Logger } =  require('./logger');
 const utilityLogger = new Logger();
-const loadedHeaderRow = null; 
+let loadedHeaderRow = null;
 /**
  * Set the logger instance for the utility
  * 
