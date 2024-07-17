@@ -84,6 +84,7 @@ function getFileNameToRead(siteCode = null) {
  * Get first active worksheet id (in alpha-numerical form)
  * 
  * @returns {string}
+ * @throws {Error} if no worksheet found in the excel sheet or api call failed
  */
 async function getFirstActiveWorksheetId()
 {   
@@ -97,6 +98,10 @@ async function getFirstActiveWorksheetId()
     }
     const response = await axios.get(getFilePathToRead() + `/workbook/worksheets/?$select=id,visibility`, { headers: requestHeaders })
     let worksheets =  response.data?.value || []
+    if (worksheets.length === 0) {
+        utilityLogger.debug(`No worksheet found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
+        throw new Error('No worksheet found in the excel sheet or api call failed. Please check the excel sheet and try again.')
+    }
     worksheets = worksheets.filter(worksheet => worksheet.visibility === 'Visible')
     loadedWorkSheetId = worksheets[0].id
     return loadedWorkSheetId
@@ -106,6 +111,7 @@ async function getFirstActiveWorksheetId()
  * Get first table id from the worksheet
  * 
  * @returns {string}
+ * @throws {Error} if no table found in the excel sheet or api call failed
  */
 async function getFirstTable()
 {
@@ -119,6 +125,10 @@ async function getFirstTable()
     }
     const response = await axios.get(getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables?$select=id`, { headers: requestHeaders })
     let tables = response.data?.value || []
+    if (tables.length === 0) {
+        utilityLogger.debug(`No table found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
+        throw new Error('No table found in the excel sheet or api call failed. Please check the excel sheet and try again.')
+    }
     loadedTableId =  tables[0].id
     return loadedTableId
 }
@@ -143,6 +153,7 @@ async function getHeaderRow() {
     const response = await axios.get(apiUrl, { headers: requestHeaders })
     const columns = response.data?.value || []
     if (columns.length === 0) {
+        utilityLogger.debug(`No columns found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
         throw new Error('No columns found in the excel sheet or api call failed. Please check the excel sheet and try again.')
     }
     columns.forEach((element)=> {
@@ -176,6 +187,7 @@ async function findRowIndexByID(colName, valueToMatch) {
     const loadedHeaderRow = await getHeaderRow()
     const columnIndex = loadedHeaderRow[colName]
     if (columnIndex === -1) {
+        utilityLogger.debug(`Column ${colName} not found in the excel sheet`)
         throw new Error(`Column ${colName} not found in the excel sheet`)
     }
     const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/columns/itemAt(index=${columnIndex})?$select=values`
