@@ -20,7 +20,7 @@ function validateData (data) {
   // @TODO Here add the logic to validate the received data
   // @TODO in case of error return { success: false, message: '<error message>' }
   let msg = '', isSuccess= true;
-  const errorMessage = checkMissingRequestInputs(data, ['brand', 'website']);
+  const errorMessage = checkMissingRequestInputs(data, ['brand', 'website', 'schedule_id']);
   if (null !== errorMessage)
   {
     msg = errorMessage;

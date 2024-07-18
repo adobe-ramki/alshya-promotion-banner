@@ -249,11 +249,134 @@ function getSheetColumnsToUpdate() {
     ]
 }
 
+/**
+ *
+ * @param {{}} jsonData
+ */
+async function createRow(jsonData) {
+    let dataId = null;
+    try {
+        const getWorksheetId = await getFirstActiveWorksheetId()
+        const getTableId = await getFirstTable()
+        const headers = { headers: {
+                'Authorization': `Bearer ${getAccessToken()}`,
+                'Content-Type': 'application/json',
+            }
+        };
+        if (getSheetColumnsToUpdate().length !== jsonData.length) {
+            throw new Error("Number of columns mismatched in post data");
+        }
+        const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows`
+        const response = await axios.post(apiUrl, jsonData, headers)
+        dataId = response.data?.index || null;
+    } catch (e) {
+        utilityLogger.debug(`Error writing to file:${stringParameters(e)}`)
+    }
+    return dataId ? true : false;
+}
+
+/**
+ *
+ * @param {{}} jsonData
+ * @param {number} rowIndex
+ */
+async function updateRow(jsonData, rowIndex) {
+    let dataId = null;
+    try {
+        const getWorksheetId = await getFirstActiveWorksheetId()
+        const getTableId = await getFirstTable()
+        const headers = { headers: {
+                'Authorization': `Bearer ${getAccessToken()}`,
+                'Content-Type': 'application/json',
+            }
+        };
+        if (getSheetColumnsToUpdate().length !== jsonData.length) {
+            throw new Error("Number of columns mismatched in post data");
+        }
+        const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowIndex}`
+        const response = await axios.patch(apiUrl, jsonData, headers)
+        dataId = response.data?.index || null;
+    } catch (e) {
+        utilityLogger.debug(`Error writing to file:${stringParameters(e)}`)
+    }
+    return dataId ? true : false;
+}
+
+async function createOrUpdateRows(jsonData) {
+    // check if row exists
+    const scheduleId = parseInt(jsonData.schedule_id);
+    const rowId = findRowIndexByID('schedule_id', scheduleId);
+    if (rowId > 0) {
+        return await updateRow(jsonData, rowId)
+    } else {
+        return await createRow(jsonData);
+    }
+}
+
+/**
+ *
+ * @param scheduleId
+ * @returns {Promise<axios.AxiosResponse<any>|boolean>}
+ */
+async function deleteRow(scheduleId) {
+    try {
+        const headers = { headers: {
+                'Authorization': `Bearer ${getAccessToken()}`,
+                'Content-Type': 'application/json',
+            }
+        };
+        const getWorksheetId = await getFirstActiveWorksheetId()
+        const getTableId = await getFirstTable()
+        const scheduleId = parseInt(scheduleId);
+        const rowId = findRowIndexByID('schedule_id', scheduleId);
+        if (rowId < 0) {
+            utilityLogger.info(`Schedule id ${scheduleId} does not exist`);
+        }
+        const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowId}`
+        const response = await axios.delete(apiUrl, headers)
+        utilityLogger.info(`Deletion for schedule_id ${scheduleId}, ${JSON.stringify(response)}`);
+        return response;
+
+    } catch (e) {
+        utilityLogger.debug(`Error deleting row:${stringParameters(e)}`)
+    }
+    return true;
+}
+
+/**
+ *
+ * @param scheduleId
+ * @returns {Promise<void>}
+ */
+async function deactivateRow(scheduleId) {
+    try {
+        scheduleId = parseInt(scheduleId);
+        const rowId = findRowIndexByID('schedule_id', scheduleId);
+        if (rowId < 0) {
+            throw Error(`Invalid schedule id provided no entries found scheduleId -> ${scheduleId}`);
+        }
+        const getWorksheetId = await getFirstActiveWorksheetId()
+        const getTableId = await getFirstTable()
+        const headers = { headers: {
+                'Authorization': `Bearer ${getAccessToken()}`,
+                'Content-Type': 'application/json',
+            }
+        };
+        const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowId}`;
+        const response = await axios.patch(apiUrl, {status: "0"}, headers);
+        dataId = response.data?.index || null;
+    } catch (e) {
+        utilityLogger.info(`Error while deactivating row ${e.message}`)
+    }
+}
+
 module.exports = {
     getEntraAccessToken,
     setUtilityLogger,
     getFileNameToRead,
     getDirectoryPath,
     setAccessToken,
-    setFilePathToRead
+    setFilePathToRead,
+    createOrUpdateRows,
+    deleteRow
 }
