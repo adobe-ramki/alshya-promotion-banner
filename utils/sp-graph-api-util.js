@@ -2,7 +2,8 @@ const axios = require('axios')
 const { stringParameters } = require('../actions/utils')
 const { getEntraAccessToken } = require('./azure-auth')
 const { Logger } =  require('./logger')
-const brandMappingJson = require('../config/brand-mapping')
+const brandMappingJson = require('./config/brand-mapping.json')
+const storeCodeMappingJson = require('./config/store-code-mapping.json')
 const utilityLogger = new Logger()
 let loadedSiteId = null, loadedHeaderRow = null, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
 
@@ -64,23 +65,20 @@ function setUtilityLogger(logger) {
  * Get the directory full path for SharePoint
  * 
  * @param {array} params
- * @param {string} contentDirName
+ * @param {string} storeCode
  * @returns {string}
  */
-function getDirectoryPath(params, contentDirName) {
-    return params.SHAREPOINT_DIRECTORY_PATH_FROM_ROOT + '/' + contentDirName + '_promotions'
+function getDirectoryPath(params, storeCode) {
+    storeCode = storeCodeMappingJson[storeCode] || storeCode
+    return params.SHAREPOINT_DIRECTORY_PATH_FROM_ROOT + '/' + storeCode
 }
 
 /**
- * Get the file name to read from SharePoint
+ * Set the site id for the SharePoint
  * 
- * @param {string|null} siteCode
- * @returns {string}
+ * @param {object} params 
+ * @returns 
  */
-function getFileNameToRead(siteCode = null) {
-    return `${siteCode}-promotions.xlsx`
-}
-
 async function getSiteId(params)
 {
     if (loadedSiteId) {
@@ -91,14 +89,14 @@ async function getSiteId(params)
         utilityLogger.debug('Brand is not set in the params. Please set the brand before using it.')
         throw new Error('Brand is not set in the params. Please set the brand before using it.')
     }
-    const brandPath = brandMappingJson[params.brand];
+    const brandPath = brandMappingJson[params.brand] || params.brand;
     const requestHeaders = {
         'Authorization': `Bearer ${getAccessToken()}`, 
         'Content-Type': 'application/json',
     }
     const apiUrl =  `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.SHAREPOINT_HOST_NAME}:/sites/AXP/${brandPath}?$select=id`
     const response = await axios.get(apiUrl, { headers: requestHeaders })
-    const siteId = response.data?.value[0].id || null
+    const siteId = response.data?.id || null
     if (!siteId) {
         utilityLogger.debug(`Site id not found in the response. Response ${stringParameters(response)}`)
         throw new Error('Site id not found in the response. Please check the site brand path mapping.')
@@ -106,6 +104,42 @@ async function getSiteId(params)
     loadedSiteId = siteId
     return loadedSiteId
 }
+
+/**
+ * Get file id from SharePoint
+ * 
+ * @param {string} filePath 
+ * @returns {string}
+ */
+async function getFileIdFromSharePoint(filePath) {
+    const requestHeaders = {
+        'Authorization': `Bearer ${getAccessToken()}`,
+        'Content-Type': 'application/json',
+    }
+    const apiUrl = `${filePath}?$select=id`
+    const response = await axios.get(apiUrl, { headers: requestHeaders })
+    const fileId = response.data?.id || null
+    if (!fileId) {
+        utilityLogger.debug(`File id not found in the response. Response ${stringParameters(response)}`)
+        throw new Error('File id not found in the sharepoint. Please check the file path.')
+    }
+    return fileId
+}
+
+/**
+ * Get file item id from SharePoint
+ * 
+ * @param {object} params 
+ * @param {string} siteCode 
+ * @param {string} filePathPrefix 
+ * @returns 
+ */
+async function getFileItemId(params, siteCode, filePathPrefix) {
+    const getFileNameToRead = params.FILE_NAME_TO_READ
+    let fileDirPrefix = filePathPrefix + `drive/root:/` + getDirectoryPath(params, siteCode) + '/'
+    const itemId = await getFileIdFromSharePoint(fileDirPrefix + getFileNameToRead)
+    return filePathPrefix + `/drive/items/${itemId}`
+  }
 
 /**
  * Get first active worksheet id (in alpha-numerical form)
@@ -221,11 +255,33 @@ async function findRowIndexByID(colName, valueToMatch) {
     const response = await axios.get(apiUrl, { headers: {
             'Authorization': `Bearer ${getAccessToken()}`,
             'Content-Type': 'application/json',
-        } 
+        }
     })
-    const colValues = response.data?.value || []
+    const colValues = response.data?.values || []
+    colValues.shift()
     const rowIndex = colValues.findIndex((element)=> parseInt(element[0]) === parseInt(valueToMatch))
     return rowIndex - 1
+}
+
+/**
+ * Get row data by index from SharePoint Shet
+ * 
+ * @param {number} rowIndex 
+ * @returns 
+ */
+async function getRowDataByIndex(rowIndex) {
+    if (rowIndex < 1) {
+        return null
+    }
+    const getTableId = await getFirstTable()
+    const getWorksheetId = await getFirstActiveWorksheetId()
+    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowIndex}?$select=values`
+    const response = await axios.get(apiUrl, { headers: {
+            'Authorization': `Bearer ${getAccessToken()}`,
+            'Content-Type': 'application/json',
+        }
+    })
+    return response.data?.values[0] || null
 }
 
 /**
@@ -276,12 +332,137 @@ function getSheetColumnsToUpdate() {
     ]
 }
 
+/**
+ * Save row into SharePoint table
+ * 
+ * @param {object} jsonData
+ * @param {null | number} rowIndex
+ */
+async function saveRowData(jsonData, rowIndex = null) {
+    let hasSaved = false;
+    const getWorksheetId = await getFirstActiveWorksheetId()
+    const getTableId = await getFirstTable()
+    const headers = { headers: {
+            'Authorization': `Bearer ${getAccessToken()}`,
+            'Content-Type': 'application/json',
+        }
+    };
+    const postData = prepareDataForUpdate(jsonData)
+    if (getSheetColumnsToUpdate().length !== postData.length) {
+        throw new Error("Number of columns mismatched in post data");
+    }
+    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows`
+    if (rowIndex === null) {
+        const response = await axios.post(apiUrl, {
+            values: [postData]
+        }, headers)
+        hasSaved = response.status === 201 ? true: false
+    } else {
+        apiUrl = apiUrl + `/${rowIndex}`
+        const response = await axios.patch(apiUrl, {
+            values: [postData]
+        }, headers)
+        hasSaved = response.status === 200 ? true: false
+    }
+    return hasSaved ? true : false;
+}
+
+/**
+ * Prepare Data before updating
+ * 
+ * @param {object} elem 
+ * @returns 
+ */
+function prepareDataForUpdate(elem) {
+    let data = []
+    const keysToUpdate = getSheetColumnsToUpdate()
+    keysToUpdate.forEach((key, index) => {
+        if (typeof elem[key] !== 'undefined') {
+            data.push((key === 'status'? parseBoolToInt(elem[key]): elem[key]))
+        }
+    })
+    return data
+}
+
+/**
+ * Create or update rows in SharePoint sheet
+ * 
+ * @param {object} jsonData 
+ * @returns 
+ */
+async function createOrUpdateRows(jsonData) {
+    // check if row exists
+    const scheduleId = parseInt(jsonData.schedule_id);
+    const rowId = findRowIndexByID('schedule_id', scheduleId);
+    if (rowId > 0) {
+        return await saveRowData(jsonData, rowId)
+    } else {
+        return await saveRowData(jsonData);
+    }
+}
+
+/**
+ * Delete row from SharePoint sheet
+ * 
+ * @param scheduleId
+ * @returns {boolean}
+ */
+async function deleteRow(scheduleId) {
+    const headers = { headers: {
+            'Authorization': `Bearer ${getAccessToken()}`,
+            'Content-Type': 'application/json',
+        }
+    };
+    const getWorksheetId = await getFirstActiveWorksheetId()
+    const getTableId = await getFirstTable()
+    scheduleId = parseInt(scheduleId);
+    const rowId = findRowIndexByID('schedule_id', scheduleId);
+    if (rowId < 0) {
+        utilityLogger.info(`Schedule id ${scheduleId} does not exist`);
+    }
+    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowId}`
+    const response = await axios.delete(apiUrl, headers)
+    utilityLogger.info(`Deletion for schedule_id ${scheduleId}, ${stringParameters(response)}`);
+    return response.status === 200 ? true: false
+}
+
+/**
+ * Deactivate row from SharePoint sheet by changing status to 0
+ * 
+ * @param scheduleId
+ * @returns {boolean}
+ */
+async function deactivateRow(scheduleId) {
+    scheduleId = parseInt(scheduleId);
+    const rowId = findRowIndexByID('schedule_id', scheduleId);
+    if (rowId < 0) {
+        throw Error(`Invalid schedule id provided no entries found scheduleId -> ${scheduleId}`);
+    }
+    let rowValues = await getRowDataByIndex(rowId);
+    const getWorksheetId = await getFirstActiveWorksheetId()
+    const getTableId = await getFirstTable()
+    const headers = { headers: {
+            'Authorization': `Bearer ${getAccessToken()}`,
+            'Content-Type': 'application/json',
+        }
+    }
+    rowValues[findColumnIndexByHeader('status')] = 0;
+    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowId}`;
+    const response = await axios.patch(apiUrl, {
+        values: [rowValues]
+    }, headers);
+    return response.status === 200 ? true: false
+}
+
 module.exports = {
     getEntraAccessToken,
     setUtilityLogger,
-    getFileNameToRead,
     getDirectoryPath,
     setAccessToken,
     setFilePathToRead,
-    getSiteId
+    getSiteId,
+    createOrUpdateRows,
+    deleteRow,
+    deactivateRow,
+    getFileItemId
 }

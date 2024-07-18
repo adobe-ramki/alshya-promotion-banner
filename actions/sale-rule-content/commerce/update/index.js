@@ -14,7 +14,7 @@ const { stringParameters } = require('../../../utils')
 const { validateData } = require('./validator')
 const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
-const { getDirectoryPath, getFileNameToRead ,getEntraAccessToken, updateExcel, removeFromExcel, setUtilityLogger } = require('../../../../utils/spo-file-update')
+const { getDirectoryPath, getSiteId, getFileItemId, getEntraAccessToken, createOrUpdateRows, deactivateRow, setUtilityLogger, setFilePathToRead, setAccessToken } = require('../../../../utils/sp-graph-api-util')
 /**
  * This action is on charge of sending created/updated staging content of sales rule information in Adobe commerce to external one drive excel sheet
  *
@@ -35,25 +35,25 @@ async function main (params) {
     }
     const oldwebsiteCodes = dataObject.pre_website.split(',');
     const newwebsiteCodes = dataObject.post_website.split(',');
-    const brandCode = dataObject.brand;
-    let removeFromWebsites = oldwebsiteCodes.filter(x => !newwebsiteCodes.includes(x));
+    const removeFromWebsites = oldwebsiteCodes.filter(x => !newwebsiteCodes.includes(x));
     if (removeFromWebsites.length === 0 && newwebsiteCodes.length === 0) {
         return actionSuccessResponse("No changes to update")
     }
-    const accessToken = await getEntraAccessToken();
-    const loadedSiteId = await getSiteId(params);
-    params.ENTRA_SITE_ID = loadedSiteId;
-    const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`;
+    const accessToken = await getEntraAccessToken()
+    setAccessToken(accessToken)
+    const loadedSiteId = await getSiteId(params)
+    const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites('${loadedSiteId}')/`;
     //add or update into sheet
-    const rowsData = [dataObject];
     for(let siteCode of newwebsiteCodes) {
-        let filePathToRead =  filePathPrefix + getFileNameToRead(siteCode);
-        await updateExcel(accessToken, rowsData, filePathToRead);
+      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix);
+      setFilePathToRead(filePathToRead);
+      await createOrUpdateRows(dataObject);
     }
     //remove/deactivate from sheet
     for(let siteCode of removeFromWebsites) {
-        let filePathToRead = filePathPrefix + getFileNameToRead(siteCode);
-        await removeFromExcel(accessToken, rowsData, filePathToRead);
+      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix);
+      setFilePathToRead(filePathToRead);
+      await deactivateRow(dataObject.schedule_id);
     }
     logger.debug('Process finished successfully')
     return actionSuccessResponse('Data synced successfully')
