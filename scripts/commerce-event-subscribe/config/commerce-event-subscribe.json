@@ -1,7 +1,7 @@
 [
   {
     "event": {
-      "name": "plugin.alshaya.events.api.sales_rule_staging_adapter.schedule",
+      "name": "plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.schedule",
       "fields": [
         {
           "name": "*"
@@ -11,7 +11,7 @@
   },
   {
     "event": {
-      "name": "plugin.alshaya.events.api.sales_rule_staging_adapter.unschedule",
+      "name": "plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.unschedule",
       "fields": [
         {
           "name": "*"
