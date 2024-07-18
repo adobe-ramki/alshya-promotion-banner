@@ -33,14 +33,15 @@ async function main (params) {
     if (validationResult.success === false) {
         return actionErrorResponse(HTTP_BAD_REQUEST, validationResult.message)
     }
-    const oldwebsiteCodes = dataObject.pre_website.split(',');
-    const newwebsiteCodes = dataObject.post_website.split(',');
+    const oldwebsiteCodes = dataObject.pre_website.split(',').filter(i => i);
+    const newwebsiteCodes = dataObject.post_website.split(',').filter(i => i);
     const removeFromWebsites = oldwebsiteCodes.filter(x => !newwebsiteCodes.includes(x));
     if (removeFromWebsites.length === 0 && newwebsiteCodes.length === 0) {
         return actionSuccessResponse("No changes to update")
     }
-    const accessToken = await getEntraAccessToken()
+    const accessToken = await getEntraAccessToken(params)
     setAccessToken(accessToken)
+    params.brand = dataObject.brand;
     const loadedSiteId = await getSiteId(params)
     const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites('${loadedSiteId}')/`;
     //add or update into sheet

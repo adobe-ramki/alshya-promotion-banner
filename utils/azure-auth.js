@@ -8,7 +8,7 @@ const axios = require('axios');
  */
 async function getEntraAccessToken (params)
 {
-    const tokenEndpoint = params.ENTRA_TOKEN_ENDPOINT.replace('{{Tenent_ID}}', params.ENTRA_TENANT_ID);
+    const tokenEndpoint = params.ENTRA_TOKEN_ENDPOINT.replace('{{Tenant_ID}}', params.ENTRA_TENANT_ID);
     const requestData = {
         client_id: params.ENTRA_CLIENT_ID,
         scope: params.ENTRA_AUTH_SCOPE,

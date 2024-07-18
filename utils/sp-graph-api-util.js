@@ -5,7 +5,7 @@ const { Logger } =  require('./logger')
 const brandMappingJson = require('./config/brand-mapping.json')
 const storeCodeMappingJson = require('./config/store-code-mapping.json')
 const utilityLogger = new Logger()
-let loadedSiteId = null, loadedHeaderRow = null, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
+let loadedSiteId = null, loadedHeaderRow = {}, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
 
 /**
  * Set file path to read from SharePoint
@@ -201,7 +201,7 @@ async function getFirstTable()
  * @throws {Error} if no columns found in the excel sheet or api call failed
  */
 async function getHeaderRow() {
-    if (loadedHeaderRow) {
+    if (loadedHeaderRow.length > 0) {
         return loadedHeaderRow
     }
     const getTableId = await getFirstTable()
@@ -260,7 +260,7 @@ async function findRowIndexByID(colName, valueToMatch) {
     const colValues = response.data?.values || []
     colValues.shift()
     const rowIndex = colValues.findIndex((element)=> parseInt(element[0]) === parseInt(valueToMatch))
-    return rowIndex - 1
+    return rowIndex + 1
 }
 
 /**
@@ -275,7 +275,7 @@ async function getRowDataByIndex(rowIndex) {
     }
     const getTableId = await getFirstTable()
     const getWorksheetId = await getFirstActiveWorksheetId()
-    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowIndex}?$select=values`
+    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/itemAt(index=${rowIndex})?$select=values`
     const response = await axios.get(apiUrl, { headers: {
             'Authorization': `Bearer ${getAccessToken()}`,
             'Content-Type': 'application/json',
@@ -358,7 +358,7 @@ async function saveRowData(jsonData, rowIndex = null) {
         }, headers)
         hasSaved = response.status === 201 ? true: false
     } else {
-        apiUrl = apiUrl + `/${rowIndex}`
+        apiUrl = apiUrl + `/itemAt(index=${rowIndex})`
         const response = await axios.patch(apiUrl, {
             values: [postData]
         }, headers)
@@ -393,7 +393,7 @@ function prepareDataForUpdate(elem) {
 async function createOrUpdateRows(jsonData) {
     // check if row exists
     const scheduleId = parseInt(jsonData.schedule_id);
-    const rowId = findRowIndexByID('schedule_id', scheduleId);
+    const rowId = await findRowIndexByID('schedule_id', scheduleId);
     if (rowId > 0) {
         return await saveRowData(jsonData, rowId)
     } else {
@@ -416,7 +416,7 @@ async function deleteRow(scheduleId) {
     const getWorksheetId = await getFirstActiveWorksheetId()
     const getTableId = await getFirstTable()
     scheduleId = parseInt(scheduleId);
-    const rowId = findRowIndexByID('schedule_id', scheduleId);
+    const rowId = await findRowIndexByID('schedule_id', scheduleId);
     if (rowId < 0) {
         utilityLogger.info(`Schedule id ${scheduleId} does not exist`);
     }
@@ -434,7 +434,7 @@ async function deleteRow(scheduleId) {
  */
 async function deactivateRow(scheduleId) {
     scheduleId = parseInt(scheduleId);
-    const rowId = findRowIndexByID('schedule_id', scheduleId);
+    const rowId = await findRowIndexByID('schedule_id', scheduleId);
     if (rowId < 0) {
         throw Error(`Invalid schedule id provided no entries found scheduleId -> ${scheduleId}`);
     }
@@ -446,8 +446,8 @@ async function deactivateRow(scheduleId) {
             'Content-Type': 'application/json',
         }
     }
-    rowValues[findColumnIndexByHeader('status')] = 0;
-    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowId}`;
+    rowValues[await findColumnIndexByHeader('status')] = 0;
+    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/itemAt(index=${rowId})`;
     const response = await axios.patch(apiUrl, {
         values: [rowValues]
     }, headers);

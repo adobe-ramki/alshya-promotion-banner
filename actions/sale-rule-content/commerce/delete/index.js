@@ -49,8 +49,9 @@ async function main (params) {
         }
         const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`;
         const rowsData = dataObject;
-        const accessToken = getEntraAccessToken(params)
+        const accessToken = await getEntraAccessToken(params)
         setAccessToken(accessToken);
+        params.brand = dataObject.brand;
         //remove from sheet
         for(let siteCode of websiteCodes) {
             setFilePathToRead(filePathPrefix + getFileNameToRead(siteCode));
