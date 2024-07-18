@@ -41,6 +41,8 @@ async function main (params) {
         return actionSuccessResponse("No changes to update")
     }
     const accessToken = await getEntraAccessToken();
+    const loadedSiteId = await getSiteId(params);
+    params.ENTRA_SITE_ID = loadedSiteId;
     const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`;
     //add or update into sheet
     const rowsData = [dataObject];

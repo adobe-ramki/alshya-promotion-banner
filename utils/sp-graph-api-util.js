@@ -2,8 +2,9 @@ const axios = require('axios')
 const { stringParameters } = require('../actions/utils')
 const { getEntraAccessToken } = require('./azure-auth')
 const { Logger } =  require('./logger')
+const brandMappingJson = require('../config/brand-mapping')
 const utilityLogger = new Logger()
-let loadedHeaderRow = null, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
+let loadedSiteId = null, loadedHeaderRow = null, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
 
 /**
  * Set file path to read from SharePoint
@@ -78,6 +79,32 @@ function getDirectoryPath(params, contentDirName) {
  */
 function getFileNameToRead(siteCode = null) {
     return `${siteCode}-promotions.xlsx`
+}
+
+async function getSiteId(params)
+{
+    if (loadedSiteId) {
+        return loadedSiteId
+    }
+
+    if (!params.brand) {
+        utilityLogger.debug('Brand is not set in the params. Please set the brand before using it.')
+        throw new Error('Brand is not set in the params. Please set the brand before using it.')
+    }
+    const brandPath = brandMappingJson[params.brand];
+    const requestHeaders = {
+        'Authorization': `Bearer ${getAccessToken()}`, 
+        'Content-Type': 'application/json',
+    }
+    const apiUrl =  `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.SHAREPOINT_HOST_NAME}:/sites/AXP/${brandPath}?$select=id`
+    const response = await axios.get(apiUrl, { headers: requestHeaders })
+    const siteId = response.data?.value[0].id || null
+    if (!siteId) {
+        utilityLogger.debug(`Site id not found in the response. Response ${stringParameters(response)}`)
+        throw new Error('Site id not found in the response. Please check the site brand path mapping.')
+    }
+    loadedSiteId = siteId
+    return loadedSiteId
 }
 
 /**
@@ -255,5 +282,6 @@ module.exports = {
     getFileNameToRead,
     getDirectoryPath,
     setAccessToken,
-    setFilePathToRead
+    setFilePathToRead,
+    getSiteId
 }

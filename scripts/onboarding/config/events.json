@@ -1,8 +1,8 @@
 {
   "sale-rule-content": {
     "commerce": [
-      "com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.schedule",
-      "com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.unschedule"
+      "com.adobe.commerce.plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.schedule",
+      "com.adobe.commerce.plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.unschedule"
     ],
     "backoffice": []
   }

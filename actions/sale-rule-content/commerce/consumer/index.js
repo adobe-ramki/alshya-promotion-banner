@@ -46,15 +46,18 @@ async function main (params) {
     logger.info('Params type: ' + params.type)
 
     switch (params.type) {
-      case 'com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.schedule': {
+      case 'com.adobe.commerce.plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.schedule': {
         logger.info('Invoking update rules staging data')
         const res = await openwhiskClient.invokeAction('sale-rule-content/update', params)
         response = res?.response?.result?.body
         statusCode = res?.response?.result?.statusCode
         break
       }
-      case 'com.adobe.commerce.plugin.alshaya.events.api.sales_rule_staging_adapter.unschedule': {
+      case 'com.adobe.commerce.plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.unschedule': {
         logger.info('Invoking deactivate row')
+        const res = await openwhiskClient.invokeAction('sale-rule-content/delete', params)
+        response = res?.response?.result?.body
+        statusCode = res?.response?.result?.statusCode
         break
       }
       default: {

@@ -79,18 +79,3 @@ and make sure you have the below config added
     }
   } 
 ```
-
-## In .env files following must be present in order to work with Sharepoint graph api
-```
-## Microsoft Entra admin credentials
-ENTRA_CLIENT_ID=
-ENTRA_CLIENT_SECRET=
-ENTRA_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
-ENTRA_TENENT_ID=
-ENTRA_TOKEN_ENDPOINT="https://login.microsoftonline.com/{{Tenent_ID}}/oauth2/v2.0/token"
-ENTRA_AUTH_SCOPE=https://graph.microsoft.com/.default
-ENTRA_AUTH_GRANT_TYPE=client_credentials
-ENTRA_SITE_ID=
-MICROSOFT_GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0";
-SHAREPOINT_DIRECTORY_PATH_FROM_ROOT=
-```
