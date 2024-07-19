@@ -35,7 +35,7 @@ async function main (params) {
     logger.info('Start processing request')
     logger.debug(`Consumer main params: ${stringParameters(params)}`)
 
-    const requiredParams = ['type', 'data.value.website', 'data.value.brand']
+    const requiredParams = ['type']
     const errorMessage = checkMissingRequestInputs(params, requiredParams, [])
 
     if (errorMessage) {

@@ -10,7 +10,7 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 const { Core } = require('@adobe/aio-sdk')
-const { stringParameters } = require('../../../utils')
+const { stringParameters, checkMissingRequestInputs } = require('../../../utils')
 const { validateData } = require('../delete/validator')
 const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
@@ -38,6 +38,12 @@ async function main (params) {
 
     try {
         const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {}
+        const requiredParams = ['website', 'schedule_id', 'brand']
+        const errorMessage = checkMissingRequestInputs(params, requiredParams, [])
+        if (errorMessage) {
+        logger.error(`Invalid request parameters: ${stringParameters(params)}`)
+        return actionErrorResponse(HTTP_BAD_REQUEST, `Invalid request parameters: ${errorMessage}`)
+        }
         const validationResult = validateData(dataObject)
         if (validationResult.success === false) {
             return actionErrorResponse(HTTP_BAD_REQUEST, validationResult.message)
