@@ -14,7 +14,16 @@ const { stringParameters, checkMissingRequestInputs } = require('../../../utils'
 const { validateData } = require('./validator')
 const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
-const { getDirectoryPath, getSiteId, getFileItemId, getEntraAccessToken, createOrUpdateRows, deactivateRow, setUtilityLogger, setFilePathToRead, setAccessToken } = require('../../../../utils/sp-graph-api-util')
+const { 
+  getSiteId, 
+  getFileItemId, 
+  getEntraAccessToken, 
+  createOrUpdateRows, 
+  deactivateRow, 
+  setUtilityLogger, 
+  setFilePathToRead, 
+  setAccessToken 
+} = require('../../../../utils/sp-graph-api-util')
 /**
  * This action is on charge of sending created/updated staging content of sales rule information in Adobe commerce to external one drive excel sheet
  *
@@ -31,7 +40,7 @@ async function main (params) {
     const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {}
     dataObject.brand = 'hm'; // to test only
     const requiredParams = ['brand', 'post_website', 'schedule_id']
-    const errorMessage = checkMissingRequestInputs(params, requiredParams, [])
+    const errorMessage = checkMissingRequestInputs(dataObject, requiredParams, [])
     if (errorMessage) {
       logger.error(`Invalid request parameters: ${stringParameters(params)}`)
       return actionErrorResponse(HTTP_BAD_REQUEST, `Invalid request parameters: ${errorMessage}`)
@@ -70,7 +79,7 @@ async function main (params) {
     logger.debug('Process finished successfully')
     return actionSuccessResponse('Data synced successfully')
   } catch (error) {
-    logger.error(`Error processing the request: ${error.message}`)
+    logger.error(`Error processing the request: error: ${error.message}`)
     return actionErrorResponse(HTTP_INTERNAL_ERROR, error.message)
   }
 }

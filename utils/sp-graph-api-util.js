@@ -354,17 +354,17 @@ function getSheetColumnsToUpdate() {
  * @param {null | number} rowIndex
  */
 async function saveRowData(jsonData, rowIndex = null) {
-    let hasSaved = false;
+    let hasSaved = false
     const getWorksheetId = await getFirstActiveWorksheetId()
     const getTableId = await getFirstTable()
     const headers = { headers: {
             'Authorization': `Bearer ${getAccessToken()}`,
             'Content-Type': 'application/json',
         }
-    };
+    }
     const postData = prepareDataForUpdate(jsonData)
     if (getSheetColumnsToUpdate().length !== postData.length) {
-        throw new Error("Number of columns mismatched in post data");
+        throw new Error("Number of columns mismatched in post data")
     }
     const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows`
     if (rowIndex === null) {
@@ -379,7 +379,7 @@ async function saveRowData(jsonData, rowIndex = null) {
         }, headers)
         hasSaved = response.status === 200 ? true: false
     }
-    return hasSaved ? true : false;
+    return hasSaved ? true : false
 }
 
 /**
@@ -407,12 +407,12 @@ function prepareDataForUpdate(elem) {
  */
 async function createOrUpdateRows(jsonData) {
     // check if row exists
-    const scheduleId = parseInt(jsonData.schedule_id);
-    const rowId = await findRowIndexByID('schedule_id', scheduleId);
+    const scheduleId = parseInt(jsonData.schedule_id)
+    const rowId = await findRowIndexByID('schedule_id', scheduleId)
     if (rowId > 0) {
         return await saveRowData(jsonData, rowId)
     } else {
-        return await saveRowData(jsonData);
+        return await saveRowData(jsonData)
     }
 }
 
@@ -427,17 +427,17 @@ async function deleteRow(scheduleId) {
             'Authorization': `Bearer ${getAccessToken()}`,
             'Content-Type': 'application/json',
         }
-    };
+    }
     const getWorksheetId = await getFirstActiveWorksheetId()
     const getTableId = await getFirstTable()
-    scheduleId = parseInt(scheduleId);
-    const rowId = await findRowIndexByID('schedule_id', scheduleId);
+    scheduleId = parseInt(scheduleId)
+    const rowId = await findRowIndexByID('schedule_id', scheduleId)
     if (rowId < 0) {
-        utilityLogger.info(`Schedule id ${scheduleId} does not exist`);
+        utilityLogger.info(`Schedule id ${scheduleId} does not exist`)
     }
     const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/${rowId}`
     const response = await axios.delete(apiUrl, headers)
-    utilityLogger.info(`Deletion for schedule_id ${scheduleId}, ${stringParameters(response)}`);
+    utilityLogger.info(`Deletion for schedule_id ${scheduleId}, ${stringParameters(response)}`)
     return response.status === 200 ? true: false
 }
 
@@ -448,12 +448,12 @@ async function deleteRow(scheduleId) {
  * @returns {boolean}
  */
 async function deactivateRow(scheduleId) {
-    scheduleId = parseInt(scheduleId);
-    const rowId = await findRowIndexByID('schedule_id', scheduleId);
+    scheduleId = parseInt(scheduleId)
+    const rowId = await findRowIndexByID('schedule_id', scheduleId)
     if (rowId < 0) {
-        throw Error(`Invalid schedule id provided no entries found scheduleId -> ${scheduleId}`);
+        throw Error(`Invalid schedule id provided no entries found scheduleId -> ${scheduleId}`)
     }
-    let rowValues = await getRowDataByIndex(rowId);
+    let rowValues = await getRowDataByIndex(rowId)
     const getWorksheetId = await getFirstActiveWorksheetId()
     const getTableId = await getFirstTable()
     const headers = { headers: {
@@ -461,11 +461,11 @@ async function deactivateRow(scheduleId) {
             'Content-Type': 'application/json',
         }
     }
-    rowValues[await findColumnIndexByHeader('status')] = 0;
-    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/itemAt(index=${rowId})`;
+    rowValues[await findColumnIndexByHeader('status')] = 0
+    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/itemAt(index=${rowId})`
     const response = await axios.patch(apiUrl, {
         values: [rowValues]
-    }, headers);
+    }, headers)
     return response.status === 200 ? true: false
 }
 

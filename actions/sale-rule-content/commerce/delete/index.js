@@ -16,12 +16,12 @@ const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
 const {
     setUtilityLogger,
-    getFileNameToRead,
+    getFileItemId,
     getDirectoryPath,
-    deleteRow,
     setFilePathToRead,
     setAccessToken,
-    getEntraAccessToken
+    getEntraAccessToken,
+    deactivateRow
 } = require('../../../../utils/sp-graph-api-util')
 
 /**
@@ -39,7 +39,7 @@ async function main (params) {
     try {
         const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {}
         const requiredParams = ['website', 'schedule_id', 'brand']
-        const errorMessage = checkMissingRequestInputs(params, requiredParams, [])
+        const errorMessage = checkMissingRequestInputs(dataObject, requiredParams, [])
         if (errorMessage) {
         logger.error(`Invalid request parameters: ${stringParameters(params)}`)
         return actionErrorResponse(HTTP_BAD_REQUEST, `Invalid request parameters: ${errorMessage}`)
@@ -60,8 +60,9 @@ async function main (params) {
         params.brand = dataObject.brand
         //remove from sheet
         for(let siteCode of websiteCodes) {
-            setFilePathToRead(filePathPrefix + getFileNameToRead(siteCode))
-            await deleteRow(rowsData.schedule_id)
+            const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
+            setFilePathToRead(filePathToRead)
+            await deactivateRow(rowsData.schedule_id)
         }
 
         logger.debug('Process finished successfully')
