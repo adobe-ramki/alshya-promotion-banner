@@ -1,6 +1,6 @@
 /*
 Copyright 2022 Adobe. All rights reserved.
-This file is licensed to you under the Apache License, Version 2.0 (the "License");
+This file is licensed to you under the Apache License, Version 2.0 (the "License")
 you may not use this file except in compliance with the License. You may obtain a copy
 of the License at http://www.apache.org/licenses/LICENSE-2.0
 
@@ -37,31 +37,31 @@ async function main (params) {
     logger.debug(`Received params: ${stringParameters(params)}`)
 
     try {
-        const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {};
+        const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {}
         const validationResult = validateData(dataObject)
         if (validationResult.success === false) {
             return actionErrorResponse(HTTP_BAD_REQUEST, validationResult.message)
         }
-        const websiteCodes = dataObject.website.split(',');
-        const brandCode = dataObject.brand;
+        const websiteCodes = dataObject.website.split(',').filter(i => i)
+        const brandCode = dataObject.brand
         if (websiteCodes.length === 0 && websiteCodes.length === 0) {
             return actionSuccessResponse("No changes to update")
         }
-        const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`;
-        const rowsData = dataObject;
+        const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`
+        const rowsData = dataObject
         const accessToken = await getEntraAccessToken(params)
-        setAccessToken(accessToken);
-        params.brand = dataObject.brand;
+        setAccessToken(accessToken)
+        params.brand = dataObject.brand
         //remove from sheet
         for(let siteCode of websiteCodes) {
-            setFilePathToRead(filePathPrefix + getFileNameToRead(siteCode));
-            await deleteRow(rowsData.schedule_id);
+            setFilePathToRead(filePathPrefix + getFileNameToRead(siteCode))
+            await deleteRow(rowsData.schedule_id)
         }
 
         logger.debug('Process finished successfully')
         return actionSuccessResponse('Data synced successfully')
     } catch (error) {
-        console.log(error);
+        console.log(error)
         logger.error(`Error processing the request: ${error.message}`)
         return actionErrorResponse(HTTP_INTERNAL_ERROR, error.message)
     }

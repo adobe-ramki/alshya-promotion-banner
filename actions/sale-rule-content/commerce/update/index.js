@@ -1,6 +1,6 @@
 /*
 Copyright 2022 Adobe. All rights reserved.
-This file is licensed to you under the Apache License, Version 2.0 (the "License");
+This file is licensed to you under the Apache License, Version 2.0 (the "License")
 you may not use this file except in compliance with the License. You may obtain a copy
 of the License at http://www.apache.org/licenses/LICENSE-2.0
 
@@ -28,34 +28,37 @@ async function main (params) {
   logger.debug(`Received params: ${stringParameters(params)}`)
 
   try {
-    const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {};
+    const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {}
     const validationResult = validateData(dataObject)
     if (validationResult.success === false) {
         return actionErrorResponse(HTTP_BAD_REQUEST, validationResult.message)
     }
-    const oldwebsiteCodes = dataObject.pre_website.split(',').filter(i => i);
-    const newwebsiteCodes = dataObject.post_website.split(',').filter(i => i);
-    const removeFromWebsites = oldwebsiteCodes.filter(x => !newwebsiteCodes.includes(x));
+    const oldwebsiteCodes = dataObject.pre_website.split(',').filter(i => i)
+    const newwebsiteCodes = dataObject.post_website.split(',').filter(i => i)
+    const removeFromWebsites = oldwebsiteCodes.filter(x => !newwebsiteCodes.includes(x))
     if (removeFromWebsites.length === 0 && newwebsiteCodes.length === 0) {
         return actionSuccessResponse("No changes to update")
     }
     const accessToken = await getEntraAccessToken(params)
     setAccessToken(accessToken)
-    params.brand = dataObject.brand;
+    params.brand = dataObject.brand
     const loadedSiteId = await getSiteId(params)
-    const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites('${loadedSiteId}')/`;
-    //add or update into sheet
-    for(let siteCode of newwebsiteCodes) {
-      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix);
-      setFilePathToRead(filePathToRead);
-      await createOrUpdateRows(dataObject);
-    }
+    const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites('${loadedSiteId}')/`
+    
     //remove/deactivate from sheet
     for(let siteCode of removeFromWebsites) {
-      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix);
-      setFilePathToRead(filePathToRead);
-      await deactivateRow(dataObject.schedule_id);
+      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
+      setFilePathToRead(filePathToRead)
+      await deactivateRow(dataObject.schedule_id)
     }
+
+    //add or update into sheet
+    for(let siteCode of newwebsiteCodes) {
+      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
+      setFilePathToRead(filePathToRead)
+      await createOrUpdateRows(dataObject)
+    }
+    
     logger.debug('Process finished successfully')
     return actionSuccessResponse('Data synced successfully')
   } catch (error) {

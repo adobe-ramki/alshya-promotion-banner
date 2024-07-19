@@ -5,7 +5,7 @@ const { Logger } =  require('./logger')
 const brandMappingJson = require('./config/brand-mapping.json')
 const storeCodeMappingJson = require('./config/store-code-mapping.json')
 const utilityLogger = new Logger()
-let loadedSiteId = null, loadedHeaderRow = {}, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
+let loadedSiteId = null, loadedHeaderRow = {}, loadedStore = {}, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
 
 /**
  * Set file path to read from SharePoint
@@ -70,6 +70,10 @@ function setUtilityLogger(logger) {
  */
 function getDirectoryPath(params, storeCode) {
     storeCode = storeCodeMappingJson[storeCode] || storeCode
+    if (typeof storeCode === 'object') {
+        loadedStore = storeCode
+        storeCode = storeCode.code
+    }
     return params.SHAREPOINT_DIRECTORY_PATH_FROM_ROOT + '/' + storeCode
 }
 
@@ -89,12 +93,18 @@ async function getSiteId(params)
         utilityLogger.debug('Brand is not set in the params. Please set the brand before using it.')
         throw new Error('Brand is not set in the params. Please set the brand before using it.')
     }
-    const brandPath = brandMappingJson[params.brand] || params.brand;
+    const brandPath = brandMappingJson[params.brand] || params.brand
+    const urlKey = brandPath.urlKey || brandPath
+    const brandSiteId = brandPath.siteId || null
+    if (brandSiteId) {
+        loadedSiteId = brandSiteId
+        return loadedSiteId
+    }
     const requestHeaders = {
         'Authorization': `Bearer ${getAccessToken()}`, 
         'Content-Type': 'application/json',
     }
-    const apiUrl =  `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.SHAREPOINT_HOST_NAME}:/sites/AXP/${brandPath}?$select=id`
+    const apiUrl =  `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.SHAREPOINT_HOST_NAME}:/sites/AXP/${urlKey}?$select=id`
     const response = await axios.get(apiUrl, { headers: requestHeaders })
     const siteId = response.data?.id || null
     if (!siteId) {
@@ -151,6 +161,11 @@ async function getFirstActiveWorksheetId()
 {   
     if (loadedWorkSheetId) {
         return loadedWorkSheetId
+    }
+
+    if (typeof loadedStore === 'object' && typeof loadedStore.sheetId !== 'undefined' && loadedStore.sheetId !== '') {
+        loadedWorkSheetId = loadedStore.sheetId
+        return loadedWorkSheetId   
     }
 
     const requestHeaders = {
