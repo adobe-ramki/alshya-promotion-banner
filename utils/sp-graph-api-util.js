@@ -2,10 +2,10 @@ const axios = require('axios')
 const { stringParameters } = require('../actions/utils')
 const { getEntraAccessToken } = require('./azure-auth')
 const { Logger } =  require('./logger')
-const brandMappingJson = require('./config/brand-mapping.json')
-const storeCodeMappingJson = require('./config/store-code-mapping.json')
+const brandMappingJson = require('../config/brand-mapping.json')
+const storeCodeMappingJson = require('../config/store-code-mapping.json')
 const utilityLogger = new Logger()
-let loadedSiteId = null, loadedHeaderRow = {}, loadedStore = {}, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
+let loadedSiteId = null, loadedStoreCode = null, loadedHeaderRow = {}, loadedStore = {}, loadedWorkSheetId = null, loadedTableId = null, loadedAccessToken = null, loadedFilePath = null
 
 /**
  * Set file path to read from SharePoint
@@ -74,6 +74,7 @@ function getDirectoryPath(params, storeCode) {
         loadedStore = storeCode
         storeCode = storeCode.code
     }
+    loadedStoreCode = storeCode
     return params.SHAREPOINT_DIRECTORY_PATH_FROM_ROOT + '/' + storeCode
 }
 
@@ -90,7 +91,7 @@ async function getSiteId(params)
     }
 
     if (!params.brand) {
-        utilityLogger.debug('Brand is not set in the params. Please set the brand before using it.')
+        utilityLogger.info('Brand is not set in the params. Please set the brand before using it.')
         throw new Error('Brand is not set in the params. Please set the brand before using it.')
     }
     const brandPath = brandMappingJson[params.brand] || params.brand
@@ -108,7 +109,7 @@ async function getSiteId(params)
     const response = await axios.get(apiUrl, { headers: requestHeaders })
     const siteId = response.data?.id || null
     if (!siteId) {
-        utilityLogger.debug(`Site id not found in the response. Response ${stringParameters(response)}`)
+        utilityLogger.info(`Site id not found in the response. Response ${stringParameters(response)}`)
         throw new Error('Site id not found in the response. Please check the site brand path mapping.')
     }
     loadedSiteId = siteId
@@ -130,7 +131,7 @@ async function getFileIdFromSharePoint(filePath) {
     const response = await axios.get(apiUrl, { headers: requestHeaders })
     const fileId = response.data?.id || null
     if (!fileId) {
-        utilityLogger.debug(`File id not found in the response. Response ${stringParameters(response)}`)
+        utilityLogger.info(`File id not found in the response. Response ${stringParameters(response)}`)
         throw new Error('File id not found in the sharepoint. Please check the file path.')
     }
     return fileId
@@ -145,10 +146,9 @@ async function getFileIdFromSharePoint(filePath) {
  * @returns 
  */
 async function getFileItemId(params, siteCode, filePathPrefix) {
-    const getFileNameToRead = params.FILE_NAME_TO_READ
     let fileDirPrefix = filePathPrefix + `drive/root:/` + getDirectoryPath(params, siteCode) + '/'
-    const itemId = await getFileIdFromSharePoint(fileDirPrefix + getFileNameToRead)
-    return filePathPrefix + `/drive/items/${itemId}`
+    let itemId = await getFileIdFromSharePoint(fileDirPrefix + params.FILE_NAME_TO_READ)
+    return filePathPrefix + `drive/items/${itemId}`
   }
 
 /**
@@ -172,10 +172,10 @@ async function getFirstActiveWorksheetId()
         'Authorization': `Bearer ${getAccessToken()}`,
         'Content-Type': 'application/json'
     }
-    const response = await axios.get(getFilePathToRead() + `/workbook/worksheets/?$select=id,visibility`, { headers: requestHeaders })
+    let response = await axios.get(getFilePathToRead() + `/workbook/worksheets/?$select=id,visibility`, { headers: requestHeaders })
     let worksheets =  response.data?.value || []
     if (worksheets.length === 0) {
-        utilityLogger.debug(`No worksheet found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
+        utilityLogger.info(`No worksheet found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
         throw new Error('No worksheet found in the excel sheet or api call failed. Please check the excel sheet and try again.')
     }
     worksheets = worksheets.filter(worksheet => worksheet.visibility === 'Visible')
@@ -202,7 +202,7 @@ async function getFirstTable()
     const response = await axios.get(getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables?$select=id`, { headers: requestHeaders })
     let tables = response.data?.value || []
     if (tables.length === 0) {
-        utilityLogger.debug(`No table found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
+        utilityLogger.info(`No table found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
         throw new Error('No table found in the excel sheet or api call failed. Please check the excel sheet and try again.')
     }
     loadedTableId =  tables[0].id
@@ -227,13 +227,14 @@ async function getHeaderRow() {
     }
     const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/columns?$select=index,name`
     const response = await axios.get(apiUrl, { headers: requestHeaders })
-    const columns = response.data?.value || []
+    let columns = response.data?.value || []
     if (columns.length === 0) {
-        utilityLogger.debug(`No columns found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
+        utilityLogger.info(`No columns found in the excel sheet or api call failed. Response ${stringParameters(response)}`)
         throw new Error('No columns found in the excel sheet or api call failed. Please check the excel sheet and try again.')
     }
     columns.forEach((element)=> {
-        loadedHeaderRow[element.name] = element.index
+        if (element.name && element.name !== '')
+            loadedHeaderRow[element.name] = element.index
     })
     return loadedHeaderRow
 }
@@ -263,7 +264,7 @@ async function findRowIndexByID(colName, valueToMatch) {
     const loadedHeaderRow = await getHeaderRow()
     const columnIndex = loadedHeaderRow[colName]
     if (columnIndex === -1) {
-        utilityLogger.debug(`Column ${colName} not found in the excel sheet`)
+        utilityLogger.info(`Column ${colName} not found in the excel sheet`)
         throw new Error(`Column ${colName} not found in the excel sheet`)
     }
     const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/columns/itemAt(index=${columnIndex})?$select=values`
@@ -272,10 +273,11 @@ async function findRowIndexByID(colName, valueToMatch) {
             'Content-Type': 'application/json',
         }
     })
-    const colValues = response.data?.values || []
+    let colValues = response.data?.values || []
     colValues.shift()
-    const rowIndex = colValues.findIndex((element)=> parseInt(element[0]) === parseInt(valueToMatch))
-    return rowIndex + 1
+    let rowIndex = colValues.findIndex((element)=> parseInt(element[0]) === parseInt(valueToMatch))
+    utilityLogger.info(`Row index for ${colName} ${valueToMatch} is ${rowIndex}`)
+    return rowIndex
 }
 
 /**
@@ -362,19 +364,20 @@ async function saveRowData(jsonData, rowIndex = null) {
             'Content-Type': 'application/json',
         }
     }
-    const postData = prepareDataForUpdate(jsonData)
+    let postData = prepareDataForUpdate(jsonData)
     if (getSheetColumnsToUpdate().length !== postData.length) {
+        utilityLogger.info(`Number of columns mismatched in post data. Got ${stringParameters(postData)}`)
         throw new Error("Number of columns mismatched in post data")
     }
-    const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows`
+    let apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows`
     if (rowIndex === null) {
-        const response = await axios.post(apiUrl, {
+        let response = await axios.post(apiUrl, {
             values: [postData]
         }, headers)
         hasSaved = response.status === 201 ? true: false
     } else {
         apiUrl = apiUrl + `/itemAt(index=${rowIndex})`
-        const response = await axios.patch(apiUrl, {
+        let response = await axios.patch(apiUrl, {
             values: [postData]
         }, headers)
         hasSaved = response.status === 200 ? true: false
@@ -389,13 +392,32 @@ async function saveRowData(jsonData, rowIndex = null) {
  * @returns 
  */
 function prepareDataForUpdate(elem) {
-    let data = []
-    const keysToUpdate = getSheetColumnsToUpdate()
-    keysToUpdate.forEach((key, index) => {
-        if (typeof elem[key] !== 'undefined') {
-            data.push((key === 'status'? parseBoolToInt(elem[key]): elem[key]))
-        }
-    })
+    let data = [], keysToUpdate = getSheetColumnsToUpdate()
+    if (Object.keys(elem).length > 0) {
+        keysToUpdate.forEach((key, index) => {
+            if (typeof elem[key] !== 'undefined') {
+                let value = elem[key];
+                if (key === 'status') {
+                    value = parseBoolToInt(value)
+                } else if ([
+                    'description_en',
+                    'description_ar',
+                    'short_terms_and_conditions_en',
+                    'short_terms_and_conditions_ar'
+                ].includes(key)) {
+                    try{
+                        let jsonValue = JSON.parse(value)
+                        if (loadedStoreCode && typeof jsonValue[loadedStoreCode] !== 'undefined') {
+                            value = jsonValue[loadedStoreCode]
+                        }
+                    } catch (error) {
+                        utilityLogger.info(`Error parsing json value for key ${key} ${error.message}`)
+                    }
+                }
+                data.push(value)
+            }
+        })
+    }
     return data
 }
 
@@ -407,9 +429,8 @@ function prepareDataForUpdate(elem) {
  */
 async function createOrUpdateRows(jsonData) {
     // check if row exists
-    const scheduleId = parseInt(jsonData.schedule_id)
-    const rowId = await findRowIndexByID('schedule_id', scheduleId)
-    if (rowId > 0) {
+    const rowId = await findRowIndexByID('schedule_id', parseInt(jsonData.schedule_id))
+    if (rowId >= 0) {
         return await saveRowData(jsonData, rowId)
     } else {
         return await saveRowData(jsonData)
@@ -430,8 +451,7 @@ async function deleteRow(scheduleId) {
     }
     const getWorksheetId = await getFirstActiveWorksheetId()
     const getTableId = await getFirstTable()
-    scheduleId = parseInt(scheduleId)
-    const rowId = await findRowIndexByID('schedule_id', scheduleId)
+    const rowId = await findRowIndexByID('schedule_id', parseInt(scheduleId))
     if (rowId < 0) {
         utilityLogger.info(`Schedule id ${scheduleId} does not exist`)
     }
@@ -448,8 +468,7 @@ async function deleteRow(scheduleId) {
  * @returns {boolean}
  */
 async function deactivateRow(scheduleId) {
-    scheduleId = parseInt(scheduleId)
-    const rowId = await findRowIndexByID('schedule_id', scheduleId)
+    const rowId = await findRowIndexByID('schedule_id', parseInt(scheduleId))
     if (rowId < 0) {
         throw Error(`Invalid schedule id provided no entries found scheduleId -> ${scheduleId}`)
     }
@@ -463,7 +482,7 @@ async function deactivateRow(scheduleId) {
     }
     rowValues[await findColumnIndexByHeader('status')] = 0
     const apiUrl = getFilePathToRead() + `/workbook/worksheets/${getWorksheetId}/tables/${getTableId}/rows/itemAt(index=${rowId})`
-    const response = await axios.patch(apiUrl, {
+    let response = await axios.patch(apiUrl, {
         values: [rowValues]
     }, headers)
     return response.status === 200 ? true: false

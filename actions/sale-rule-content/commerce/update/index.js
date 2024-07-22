@@ -30,22 +30,22 @@ const {
  * @returns {object} returns response object with status code, request data received and response of the invoked action
  * @param {object} params - includes the env params, type and the data of the event
  */
-async function main (params) {
-  const logger = Core.Logger('product-commerce-consumer', { level: params.LOG_LEVEL || 'info' })
+async function main (inputParams) {
+  let params = inputParams
+  const logger = Core.Logger('sale-rule-commerce-update', { level: params.LOG_LEVEL || 'info' })
   setUtilityLogger(logger)
   logger.info('Start processing request')
   logger.debug(`Received params: ${stringParameters(params)}`)
 
   try {
-    const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {}
-    dataObject.brand = 'hm'; // to test only
-    const requiredParams = ['brand', 'post_website', 'schedule_id']
-    const errorMessage = checkMissingRequestInputs(dataObject, requiredParams, [])
+    const dataObject = params.data?.data?.value?.salesRule || {}
+    const requiredParams = ['data.brand', 'data.post_website', 'data.schedule_id']
+    const errorMessage = checkMissingRequestInputs({data: dataObject}, requiredParams, [])
     if (errorMessage) {
-      logger.error(`Invalid request parameters: ${stringParameters(params)}`)
-      return actionErrorResponse(HTTP_BAD_REQUEST, `Invalid request parameters: ${errorMessage}`)
+      const stringParams = stringParameters(dataObject)
+      logger.error(`Invalid request parameters: ${stringParams}`)
+      return actionErrorResponse(HTTP_BAD_REQUEST, `Invalid request parameters: ${stringParams}`)
     }
-
     const validationResult = validateData(dataObject)
     if (validationResult.success === false) {
         return actionErrorResponse(HTTP_BAD_REQUEST, validationResult.message)
@@ -64,14 +64,14 @@ async function main (params) {
     
     //remove/deactivate from sheet
     for(let siteCode of removeFromWebsites) {
-      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
+      let filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
       setFilePathToRead(filePathToRead)
       await deactivateRow(dataObject.schedule_id)
     }
-
+    
     //add or update into sheet
     for(let siteCode of newwebsiteCodes) {
-      const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
+      let filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
       setFilePathToRead(filePathToRead)
       await createOrUpdateRows(dataObject)
     }
@@ -79,7 +79,7 @@ async function main (params) {
     logger.debug('Process finished successfully')
     return actionSuccessResponse('Data synced successfully')
   } catch (error) {
-    logger.error(`Error processing the request: error: ${error.message}`)
+    logger.error(`Error processing the request: error: ${JSON.stringify(error)}`)
     return actionErrorResponse(HTTP_INTERNAL_ERROR, error.message)
   }
 }

@@ -15,6 +15,7 @@ const { validateData } = require('../delete/validator')
 const { HTTP_INTERNAL_ERROR, HTTP_BAD_REQUEST } = require('../../../constants')
 const { actionSuccessResponse, actionErrorResponse } = require('../../../responses')
 const {
+    getSiteId,
     setUtilityLogger,
     getFileItemId,
     getDirectoryPath,
@@ -31,15 +32,15 @@ const {
  * @param {object} params - includes the env params, type and the data of the event
  */
 async function main (params) {
-    const logger = Core.Logger('product-commerce-consumer', { level: params.LOG_LEVEL || 'info' })
+    const logger = Core.Logger('sale-rule-commerce-delete', { level: params.LOG_LEVEL || 'info' })
     setUtilityLogger(logger)
     logger.info('Start processing request')
     logger.debug(`Received params: ${stringParameters(params)}`)
 
     try {
-        const dataObject = params?.data?.value?.salesRule || params?.salesRule || params?.data?.salesRule || {}
-        const requiredParams = ['website', 'schedule_id', 'brand']
-        const errorMessage = checkMissingRequestInputs(dataObject, requiredParams, [])
+        const dataObject = params.data?.data?.value?.salesRule || {}
+        const requiredParams = ['data.website', 'data.schedule_id', 'data.brand']
+        const errorMessage = checkMissingRequestInputs({data: dataObject}, requiredParams, [])
         if (errorMessage) {
         logger.error(`Invalid request parameters: ${stringParameters(params)}`)
         return actionErrorResponse(HTTP_BAD_REQUEST, `Invalid request parameters: ${errorMessage}`)
@@ -49,26 +50,23 @@ async function main (params) {
             return actionErrorResponse(HTTP_BAD_REQUEST, validationResult.message)
         }
         const websiteCodes = dataObject.website.split(',').filter(i => i)
-        const brandCode = dataObject.brand
         if (websiteCodes.length === 0 && websiteCodes.length === 0) {
             return actionSuccessResponse("No changes to update")
         }
-        const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites/${params.ENTRA_SITE_ID}/drive/root:/${getDirectoryPath(params, brandCode)}/`
-        const rowsData = dataObject
         const accessToken = await getEntraAccessToken(params)
         setAccessToken(accessToken)
         params.brand = dataObject.brand
+        const loadedSiteId = await getSiteId(params)
+        const filePathPrefix = `${params.MICROSOFT_GRAPH_BASE_URL}/sites('${loadedSiteId}')/`
         //remove from sheet
         for(let siteCode of websiteCodes) {
-            const filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
+            let filePathToRead = await getFileItemId(params, siteCode, filePathPrefix)
             setFilePathToRead(filePathToRead)
-            await deactivateRow(rowsData.schedule_id)
+            await deactivateRow(dataObject.schedule_id)
         }
-
         logger.debug('Process finished successfully')
         return actionSuccessResponse('Data synced successfully')
     } catch (error) {
-        console.log(error)
         logger.error(`Error processing the request: ${error.message}`)
         return actionErrorResponse(HTTP_INTERNAL_ERROR, error.message)
     }

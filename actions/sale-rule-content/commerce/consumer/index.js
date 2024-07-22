@@ -26,7 +26,7 @@ const { errorResponse, successResponse } = require('../../../responses')
  * @param {object} params - includes the env params, type and the data of the event
  */
 async function main (params) {
-  const logger = Core.Logger('product-commerce-consumer', { level: params.LOG_LEVEL || 'info' })
+  const logger = Core.Logger('sale-rule-commerce-consumer', { level: params.LOG_LEVEL || 'info' })
 
   try {
     const openwhiskClient = new Openwhisk(params.API_HOST, params.API_AUTH)
@@ -48,14 +48,14 @@ async function main (params) {
     switch (params.type) {
       case 'com.adobe.commerce.plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.schedule': {
         logger.info('Invoking update rules staging data')
-        const res = await openwhiskClient.invokeAction('sale-rule-content/update', params)
+        const res = await openwhiskClient.invokeAction('sale-rule-content-commerce/update', params)
         response = res?.response?.result?.body
         statusCode = res?.response?.result?.statusCode
         break
       }
       case 'com.adobe.commerce.plugin.alshaya.sale_rule_staging_event.api.sales_rule_staging_adapter.unschedule': {
         logger.info('Invoking deactivate row')
-        const res = await openwhiskClient.invokeAction('sale-rule-content/delete', params)
+        const res = await openwhiskClient.invokeAction('sale-rule-content-commerce/delete', params)
         response = res?.response?.result?.body
         statusCode = res?.response?.result?.statusCode
         break
@@ -74,7 +74,7 @@ async function main (params) {
     logger.info(`Successful request: ${statusCode}`)
     return successResponse(params.type, response)
   } catch (error) {
-    logger.error(`Server error: ${error.message}`)
+    logger.error(`Server error: ${JSON.stringify(error)}`)
     return errorResponse(HTTP_INTERNAL_ERROR, error.message)
   }
 }
